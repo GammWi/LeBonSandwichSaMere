@@ -1,0 +1,24 @@
+{
+  "name": "commande",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "ENV=dev nodemon server.js"
+  },
+  "keywords": [],
+  "author": "K You",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mysql": "^2.17.1",
+    "sanitize-html": "^1.20.1",
+    "uid": "0.0.2",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.1"
+  }
+}

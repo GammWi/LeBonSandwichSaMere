@@ -1,0 +1,49 @@
+version: "3"
+
+networks:
+  lbs.net:
+    driver: bridge
+
+services:
+  api.commande:
+    image: node
+    environment:
+      - NODE_ENV=dev
+      - VHOST_HOSTNAME=api.commande.local
+    ports:
+      - "19080:8080"
+    volumes:
+      - ./commande_dev:/app/commande_api
+    working_dir: /app/commande_api
+    command: npm run dev
+    networks:
+      - lbs.net
+    links:
+      - mysql.commande:dbcom
+
+  #############################
+  # mysql commande  + adminer
+  #############################
+  mysql.commande:
+    image: mariadb:latest
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8 --collation-server=utf8_general_ci
+    environment:
+      - MYSQL_ROOT_PASSWORD=comroot123
+      - MYSQL_USER=command_lbs
+      - MYSQL_PASSWORD=command_lbs
+      - MYSQL_DATABASE=command_lbs
+    ports:
+      - "3307:3306"
+    networks:
+      - lbs.net
+    volumes:
+      - ./commande_api/sql:/var/sql
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - lbs.net
+    links:
+      - mysql.commande:command
