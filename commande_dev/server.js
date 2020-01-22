@@ -9,6 +9,8 @@ const Command = require('./class/Command');
 const sanitizeHtml = require('sanitize-html');
 const uid = require('uuid');
 
+const defaultSize = 5;
+
 // Constants
 const PORT = 8080;
 const HOST = "0.0.0.0";
@@ -23,18 +25,132 @@ app.get("/", (req, res) => {
 app.route('/commandes')
     .get(function (req, res) {
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
-        let query = "SELECT * FROM `commande` ORDER BY id ASC"; // query database to get all the players
-        let tmp = {};
-        db.query(query, (err, result) => {
-            if (err) {
-                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'})
-                res.status(404).send(JSON.stringify(tmp));
-            } else {
-                tmp
-                    = new CustomError({type: 200, msg: 'SUCCESS', error: 'SUCCESS'})
-                res.status(200).send(JSON.stringify({commandes: result}));
+
+        let query = "select count(id) as nbElement from commande %%JOKER%%";
+
+        if (req.query.s != null) {
+            query = query.replace('%%JOKER%%', `WHERE status LIKE ${req.query.s}`);
+        } else {
+            query = query.replace('%%JOKER%%', '');
+        }
+
+        let promise = new Promise((resolve, reject) => {
+            db.query(query, (err, result) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            })
+        });
+
+        let size;
+        let nbPages;
+        let page;
+
+        promise.then( lm => {
+            const nbElement = lm[0].nbElement;
+
+            size = (req.query.size != null) ? req.query.size : defaultSize;
+            nbPages = Math.ceil(nbElement / size);
+
+            page = 1;
+
+            if (req.query.page != null) {
+                if (req.query.page >= 1) {
+                    if (req.query.page  > nbPages) {
+                        page = nbPages;
+                    } else {
+                        page = req.query.page;
+                    }
+                }
             }
-        })
+
+            page = parseInt(page);
+            size = parseInt(size);
+            console.log(page);
+            console.log(size);
+
+
+            query = `SELECT * FROM commande %%JOKER%% ORDER BY id ASC %%SIZE%% %%PAGE%%`; // query database to get all the players
+
+            if (req.query.s != null) {
+                query = query.replace('%%JOKER%%', `WHERE status LIKE ${req.query.s}`);
+            } else {
+                query = query.replace('%%JOKER%%', '');
+            }
+
+
+            if(page != null && page > 1) {
+                query = query.replace('%%PAGE%%', `OFFSET ${(page - 1) * size}`);
+            } else {
+                query = query.replace('%%PAGE%%', ``);
+            }
+
+            if(size != null ) {
+                query = query.replace('%%SIZE%%', `LIMIT ${size}`);
+            } else {
+                query = query.replace('%%SIZE%%', ``);
+            }
+
+            let tmp = {};
+            db.query(query, (err, result) => {
+                if (err) {
+                    tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
+                    console.log(tmp);
+                    // res.status(404).send(JSON.stringify(tmp));
+                } else {
+                    tmp = new CustomError({type: 200, msg: 'SUCCESS', error: 'SUCCESS'});
+                    console.log(result);
+                    const commandList = [];
+                    let command = {};
+                    result.forEach(lm => {
+                        command.command = {
+                            id: lm.id,
+                            nom: lm.nom,
+                            created_at: lm.created_at,
+                            livraison: lm.livraison,
+                            status: lm.status
+                        };
+                        command.links = {self: {href: `/commandes/${lm.id}`}};
+                        commandList.push(command);
+                        command = {};
+                    });
+
+                    let data = {};
+
+                    data.type = "collection";
+                    data.count = commandList.length;
+                    data.size = size;
+                    data.page = page;
+                    data.commands = commandList;
+
+                    console.log(commandList);
+
+                    const pageNext = (page >= nbPages) ? nbPages : page + 1;
+                    const pagePrev = (page <= 1) ? 1 : page - 1;
+                    const pageLast = nbPages;
+                    const pageFirst = 1;
+
+                    data.links = {
+                        next: {
+                            href: `/commandes?page=${pageNext}&size=${size}`
+                        },
+                        prev: {
+                            href: `/commandes?page=${pagePrev}&size=${size}`
+                        },
+                        last: {
+                            href: `/commandes?page=${pageLast}&size=${size}`
+                        },
+                        first: {
+                            href: `/commandes?page=${pageFirst}&size=${size}`
+                        },
+                    };
+
+                    res.status(200).send(JSON.stringify(data));
+                }
+            })
+        });
     })
     .post(function (req, res) {
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
@@ -109,7 +225,8 @@ app.route('/commandes/:id')
                     db.query(query, [req.params.id], (err, result) => {
                         res.status(200).send(JSON.stringify({
                             result: (result),
-                            change: (commande)}));
+                            change: (commande)
+                        }));
                     });
                 }
             }
@@ -138,8 +255,8 @@ const db = mysql.createConnection({
 // connexion à la bdd
 db.connect(err => {
     if (err) {
-        res.status(500).json(new CustomError({error: 500, type: 'Internal Server Error', msg: 'Internal Server Error'}))
+        console.error(err);
+        // res.status(500).json(new CustomError({error: 500, type: 'Internal Server Error', msg: 'Internal Server Error'}))
     }
     console.log("Connected to database");
 });
-
