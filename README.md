@@ -1,1 +1,3 @@
 # LeBonSandwichSaMere
+docker-compose up
+
