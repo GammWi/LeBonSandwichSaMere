@@ -48,7 +48,7 @@ app.route('/commandes')
         let nbPages;
         let page;
 
-        promise.then( lm => {
+        promise.then(lm => {
             const nbElement = lm[0].nbElement;
 
             size = (req.query.size != null) ? req.query.size : defaultSize;
@@ -58,7 +58,7 @@ app.route('/commandes')
 
             if (req.query.page != null) {
                 if (req.query.page >= 1) {
-                    if (req.query.page  > nbPages) {
+                    if (req.query.page > nbPages) {
                         page = nbPages;
                     } else {
                         page = req.query.page;
@@ -81,13 +81,13 @@ app.route('/commandes')
             }
 
 
-            if(page != null && page > 1) {
+            if (page != null && page > 1) {
                 query = query.replace('%%PAGE%%', `OFFSET ${(page - 1) * size}`);
             } else {
                 query = query.replace('%%PAGE%%', ``);
             }
 
-            if(size != null ) {
+            if (size != null) {
                 query = query.replace('%%SIZE%%', `LIMIT ${size}`);
             } else {
                 query = query.replace('%%SIZE%%', ``);
