@@ -8,6 +8,7 @@ const CustomError = require('./class/Error');
 const Command = require('./class/Command');
 const sanitizeHtml = require('sanitize-html');
 const uid = require('uuid');
+const bcrypt = require('bcrypt');
 
 const defaultSize = 5;
 
