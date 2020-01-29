@@ -7,6 +7,7 @@ const uuidv1 = require('uuid/v1');
 
 //import du modèle de données Category défini avec Mongoose
 const Category = require("./models/Category");
+const Sandwichs = require("./models/sandwichs");
 
 const PORT = 8080;
 const HOST = "0.0.0.0";
@@ -80,6 +81,38 @@ app.post("/categories", (req, res) => {
     );
 
   }
+});
+
+app.get('/categories/:id/sandwichs', function (req, res) {
+
+  Category.find({id: req.params.id}, (err, result) => {
+    let date = new Date()
+    if (err) {
+      res.status(500).send(err);
+    }
+
+    let listeS =[]
+    let query = {categories: result[0].nom};
+    Sandwichs.find(query, (err, resultS) => {
+      if (err) {
+        res.status(500).send(err);
+      }
+      let t = []
+      resultS.forEach(swd => t.push({sandwich: swd}))
+      let cat = {"type": "ressource", "date": date.getDate()+"-"+date.getMonth()+1+"-"+date.getFullYear(), categories: result, sandwichs: t}
+      listeS.push(cat)
+      listeS.push({links: {sandwichs: {href:req.url},self:{href: "/categories/"+req.params.id+"/"}}})
+      res.status(200).json(listeS);
+    });
+  });
+
+
+})
+
+
+app.get('*', function (req, res) {
+  res.setHeader('Content-Type', 'application/json;charset=utf-8');
+  res.status(404).json(new CustomError({error: 400, type: 'BAD REQUEST', msg: 'Cette uri n\'existe pas.'}))
 });
 
 //get_next_id fourni la valeur du prochain id numérique disponible
