@@ -8,6 +8,7 @@ const CustomError = require('./class/Error');
 const Command = require('./class/Command');
 const sanitizeHtml = require('sanitize-html');
 const uid = require('uuid');
+
 const bcrypt = require('bcrypt');
 
 const defaultSize = 5;
@@ -98,11 +99,9 @@ app.route('/commandes')
             db.query(query, (err, result) => {
                 if (err) {
                     tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
-                    console.log(tmp);
-                    // res.status(404).send(JSON.stringify(tmp));
+                    res.status(404).send(JSON.stringify(tmp));
                 } else {
                     tmp = new CustomError({type: 200, msg: 'SUCCESS', error: 'SUCCESS'});
-                    console.log(result);
                     const commandList = [];
                     let command = {};
                     result.forEach(lm => {
@@ -125,8 +124,6 @@ app.route('/commandes')
                     data.size = size;
                     data.page = page;
                     data.commands = commandList;
-
-                    console.log(commandList);
 
                     const pageNext = (page >= nbPages) ? nbPages : page + 1;
                     const pagePrev = (page <= 1) ? 1 : page - 1;
@@ -157,14 +154,19 @@ app.route('/commandes')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         let cleanInput = {};
         for (let lm in req.body) {
+            // noinspection JSUnfilteredForInLoop
             cleanInput[lm] = sanitizeHtml(req.body[lm]);
         }
         cleanInput.id = uid();
+
+        cleanInput.token = bcrypt.hashSync(cleanInput.id, bcrypt.genSaltSync(10));
+
         let tmp = {};
         let newCommand = new Command(cleanInput);
+
         db.query('Insert INTO commande VALUES (?)', [newCommand.getArray()], (err, result) => {
             if (err) {
-                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'})
+                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
                 res.status(404).send(JSON.stringify(tmp));
             } else {
                 res.setHeader('Location', `commandes/${newCommand.id}`);
@@ -180,58 +182,85 @@ app.route('/commandes')
         res.status(405).send(new CustomError({type: 405, msg: 'Method not allowed', error: 'METHOD NOT ALLOWED'}));
     });
 
+function checkToken(req) {
+    return new Promise((resolve, reject) => {
+
+        let token = (req.header('X-lbs-token') !== undefined ? req.header('X-lbs-token') : (req.query.token) ? req.query.token : null);
+        bcrypt.compare(req.params.id, token).then(lm => {
+            resolve(lm);
+        }).catch(err => {
+            reject(false);
+        })
+    });
+}
 
 app.route('/commandes/:id')
     .get(function (req, res) {
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
-        let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
-        let tmp = {};
-        db.query(query, req.params.id, (err, result) => {
-            if (err) {
-                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'})
-                res.status(404).send(JSON.stringify(tmp));
+        checkToken(req).then(lm => {
+            if (lm) {
+                let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
+                let tmp = {};
+                db.query(query, req.params.id, (err, result) => {
+                    if (err) {
+                        tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
+                        res.status(404).send(JSON.stringify(tmp));
+                    } else {
+                        if (result.length > 0) {
+                            res.status(200).send(JSON.stringify({commandes: (result)}));
+                        } else {
+                            tmp = new CustomError({
+                                type: 404,
+                                msg: `La commande ${req.params.id} n'existe pas.`,
+                                error: 'NOT FOUND'
+                            });
+                            res.status(404).send(JSON.stringify(tmp));
+                        }
+                    }
+                })
             } else {
-                if (result.length > 0) {
-                    res.status(200).send(JSON.stringify({commandes: (result)}));
-                } else {
-                    tmp = new CustomError({
-                        type: 404,
-                        msg: `La commande ${req.params.id} n'existe pas.`,
-                        error: 'NOT FOUND'
-                    })
-                    res.status(404).send(JSON.stringify(tmp));
-                }
+                res.status(401).send(`Vous n'êtes pas autorisé à utiliser cette ressource.`);
             }
-        })
+        }).catch(err => {
+            res.status(500).send(`Erreur serveur. Veuillez contacter cotre administrateur.`);
+        });
     })
     .post(function (req, res) {
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
-        let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
-        let tmp = {};
-        db.query(query, [req.params.id], (err, result) => {
-            if (err) {
-                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
-                res.status(404).send(JSON.stringify(tmp));
+        checkToken(req).then(lm => {
+            if (lm) {
+                let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
+                let tmp = {};
+                db.query(query, [req.params.id], (err, result) => {
+                    if (err) {
+                        tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
+                        res.status(404).send(JSON.stringify(tmp));
+                    } else {
+                        if (result.length < 0) {
+                            tmp = new CustomError({
+                                type: 404,
+                                msg: `La commande ${req.params.id} n'existe pas.`,
+                                error: 'NOT FOUND'
+                            });
+                            res.status(404).send(JSON.stringify(tmp));
+                        } else {
+                            let commande = new Command({...req.body, ...result});
+                            query = `Update commande set ${commande.getUpdate()} where id = ?`;
+                            db.query(query, [req.params.id], (err, result) => {
+                                res.status(200).send(JSON.stringify({
+                                    result: (result),
+                                    change: (commande)
+                                }));
+                            });
+                        }
+                    }
+                })
             } else {
-                if (result.length < 0) {
-                    tmp = new CustomError({
-                        type: 404,
-                        msg: `La commande ${req.params.id} n'existe pas.`,
-                        error: 'NOT FOUND'
-                    });
-                    res.status(404).send(JSON.stringify(tmp));
-                } else {
-                    let commande = new Command({...req.body, ...result});
-                    query = `Update commande set ${commande.getUpdate()} where id = ?`;
-                    db.query(query, [req.params.id], (err, result) => {
-                        res.status(200).send(JSON.stringify({
-                            result: (result),
-                            change: (commande)
-                        }));
-                    });
-                }
+                res.status(401).send(`Vous n'êtes pas autorisé à utiliser cette ressource.`);
             }
-        })
+        }).catch(err => {
+            res.status(500).send(`Erreur serveur. Veuillez contacter cotre administrateur.`);
+        });
     })
     .all(function (req, res) {
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
