@@ -9,7 +9,7 @@ const Command = require('./class/Command');
 const sanitizeHtml = require('sanitize-html');
 const uid = require('uuid');
 
-const bcrypt2 = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const defaultSize = 5;
 
@@ -158,14 +158,19 @@ app.route('/commandes')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         let cleanInput = {};
         for (let lm in req.body) {
+            // noinspection JSUnfilteredForInLoop
             cleanInput[lm] = sanitizeHtml(req.body[lm]);
         }
         cleanInput.id = uid();
+
+        cleanInput.token = bcrypt.hashSync(cleanInput.id, bcrypt.genSaltSync(10));
+
         let tmp = {};
         let newCommand = new Command(cleanInput);
+
         db.query('Insert INTO commande VALUES (?)', [newCommand.getArray()], (err, result) => {
             if (err) {
-                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'})
+                tmp = new CustomError({type: 404, msg: err, error: 'NOT FOUND'});
                 res.status(404).send(JSON.stringify(tmp));
             } else {
                 res.setHeader('Location', `commandes/${newCommand.id}`);
