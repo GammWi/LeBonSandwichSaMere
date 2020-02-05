@@ -222,7 +222,7 @@ app.route('/commandes/:id')
                 res.status(401).send(`Vous n'êtes pas autorisé à utiliser cette ressource.`);
             }
         }).catch(err => {
-            res.status(500).send(`Erreur serveur. Veuillez contacter cotre administrateur.`);
+            res.status(500).send(`Erreur serveur. Veuillez contacter votre administrateur.`);
         });
     })
     .post(function (req, res) {
