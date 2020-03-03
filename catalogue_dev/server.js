@@ -8,6 +8,7 @@ const uuidv1 = require('uuid/v1');
 //import du modèle de données Category défini avec Mongoose
 const Category = require("./models/Category");
 const Sandwichs = require("./models/sandwichs");
+const CustomError = require('./models/Error');
 
 const PORT = 8080;
 const HOST = "0.0.0.0";
