@@ -1,5 +1,6 @@
 "use strict";
 
+const axios = require('axios');
 const app = require('express')();
 const mysql = require("mysql");
 
@@ -199,6 +200,12 @@ app.route('/commandes/:id')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         checkToken(req).then(lm => {
             if (lm) {
+                axios.get('http://localhost:19180/categories/1/sandwichs').then(lm => {
+                    console.log(lm);
+                }).catch(err => {
+                    console.log(err.toJSON());
+                });
+
                 let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
                 let tmp = {};
                 db.query(query, req.params.id, (err, result) => {
@@ -222,7 +229,7 @@ app.route('/commandes/:id')
                 res.status(401).send(`Vous n'êtes pas autorisé à utiliser cette ressource.`);
             }
         }).catch(err => {
-            res.status(500).send(`Erreur serveur. Veuillez contacter votre administrateur.`);
+            res.status(500).send(`Erreur serveur. Veuillez contacter votre administrateur. Vérifier votre token.`);
         });
     })
     .post(function (req, res) {
