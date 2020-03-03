@@ -18,11 +18,6 @@ const defaultSize = 5;
 const PORT = 8080;
 const HOST = "0.0.0.0";
 
-const rpc = axios.create({
-    baseURL: 'localhost:19180', 
-    proxy: false  
-})
-
 // App
 app.use(bodyParser({extended: true}));
 
@@ -205,7 +200,7 @@ app.route('/commandes/:id')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         checkToken(req).then(lm => {
             if (lm) {
-                rpc.get('http://localhost:19180/categories/1/sandwichs').then(lm => {
+                axios.get('http://localhost:19180/categories/1/sandwichs').then(lm => {
                     console.log(lm);
                 }).catch(err => {
                     console.log(err.toJSON());
