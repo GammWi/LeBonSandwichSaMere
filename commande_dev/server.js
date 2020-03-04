@@ -200,7 +200,7 @@ app.route('/commandes/:id')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         checkToken(req).then(lm => {
             if (lm) {
-                axios.get('http://localhost:19180/categories/1/sandwichs').then(lm => {
+                axios.get('http://catalog:8080/categories/1/sandwichs').then(lm => {
                     console.log(lm);
                 }).catch(err => {
                     console.log(err.toJSON());

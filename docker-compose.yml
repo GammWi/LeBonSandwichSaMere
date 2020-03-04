@@ -51,6 +51,7 @@ services:
       - lbs.net
     links:
       - mysql.commande:dbcom
+      - api.catalogue:catalog
 
   #############################
   # mysql commande  + adminer
