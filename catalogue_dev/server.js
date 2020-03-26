@@ -86,6 +86,8 @@ app.post("/categories", (req, res) => {
 
 app.get('/categories/:id/sandwichs', function (req, res) {
 
+  console.log('ALLO');
+
   Category.find({id: req.params.id}, (err, result) => {
     let date = new Date()
     if (err) {

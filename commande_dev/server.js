@@ -10,6 +10,11 @@ const Command = require('./class/Command');
 const sanitizeHtml = require('sanitize-html');
 const uid = require('uuid');
 
+const rpc = axios.create({
+    baseURL: 'localhost:7076',
+    proxy: false
+});
+
 const bcrypt = require('bcrypt');
 
 const defaultSize = 5;
@@ -200,13 +205,11 @@ app.route('/commandes/:id')
         res.setHeader('Content-Type', 'application/json;charset=utf-8');
         checkToken(req).then(lm => {
             if (lm) {
-                axios.get('http://catalog:8080/categories/1/sandwichs').then(lm => {
-                    console.log(lm);
-                }).catch(err => {
-                    console.log(err.toJSON());
-                });
-
-                let query = `SELECT * FROM commande WHERE commande.id = ? ORDER BY id ASC`; // query database to get all the players
+                // rpc.get('http://api.catalogue:8080/categories/1/sandwichs').then(lm => {
+                //     lm.data.forEach(lm => {
+                //         console.log(lm.sandwichs);
+                //     });
+                let query = `SELECT * FROM commande c LEFT JOIN item i ON c.id = i.command_id WHERE c.id = ? ORDER BY c.id ASC`; // query database to get all the players
                 let tmp = {};
                 db.query(query, req.params.id, (err, result) => {
                     if (err) {
@@ -214,7 +217,38 @@ app.route('/commandes/:id')
                         res.status(404).send(JSON.stringify(tmp));
                     } else {
                         if (result.length > 0) {
-                            res.status(200).send(JSON.stringify({commandes: (result)}));
+                            const commande =  {
+                                created_at: result[0].created_at,
+                                updated_at: result[0].updated_at,
+                                livraison: result[0].livraison,
+                                nom: result[0].nom,
+                                mail: result[0].mail,
+                                montant: result[0].montant,
+                                remise: result[0].remise,
+                                token: result[0].token,
+                                client_id: result[0].client_id,
+                                ref_paiement: result[0].ref_paiement,
+                                date_paiement: result[0].date_paiement,
+                                mode_paiement: result[0].mode_paiement,
+                                status: result[0].status,
+                                items: []
+                            };
+
+                            let montant = 0;
+
+                            result.forEach(item => {
+                                montant += item.tarif * item.quantite;
+                                commande.items.push({
+                                   uri: item.uri,
+                                   libelle: item.libelle,
+                                   tarif: item.tarif,
+                                   quantite: item.quantite,
+                               })
+                            });
+
+                            commande.montant = montant;
+
+                            res.status(200).send(JSON.stringify({commandes: commande}));
                         } else {
                             tmp = new CustomError({
                                 type: 404,
@@ -225,6 +259,9 @@ app.route('/commandes/:id')
                         }
                     }
                 })
+                // }).catch(err => {
+                //     console.log(err.toJSON());
+                // });
             } else {
                 res.status(401).send(`Vous n'êtes pas autorisé à utiliser cette ressource.`);
             }
